@@ -187,22 +187,32 @@ class RegisterViewController: UIViewController {
         }
         
         // Firebase login
-        FirebaseAuth.Auth.auth().createUser(withEmail: email, password: password) { [weak self] res, error in
-            guard let  self = self else { return }
-            guard let result = res, error == nil else {
-                print("@@ Error creating user")
+        DatabaseManager.shared.userExists(with: email) { [weak self] exists in
+            guard let self = self else { return }
+            
+            guard !exists else {
+                self.alertUserLoginError(message: "Looks like a user account for that email address already exists.")
                 return
             }
             
-            let user = result.user
-            print("@@ Created user \(user)")
-            self.navigationController?.dismiss(animated: true)
+            FirebaseAuth.Auth.auth().createUser(withEmail: email, password: password) { res, error in
+                guard res != nil, error == nil else {
+                    print("@@ Error creating user")
+                    return
+                }
+                
+                DatabaseManager.shared.insertUser(with: ChatAppUser(firstName: firstName,
+                                                                    lastName: lastName,
+                                                                    emailAddress: email))
+                self.navigationController?.dismiss(animated: true)
+            }
         }
+        
     }
     
-    func alertUserLoginError() {
+    func alertUserLoginError(message: String = "Please enter all information to create a new account.") {
         let alert = UIAlertController(title: "Woops",
-                                      message: "Please enter all information to create a new account.",
+                                      message: message,
                                       preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "Dismiss",
                                       style: .cancel,
